@@ -1,6 +1,30 @@
 import React, { useState, useEffect } from 'react'
 import './PortfolioGuide.css'
 
+// Correct static imports from src/assets (these files exist in your project)
+import p1Image from '../assets/p1-lead-enrichment.png'
+import p2Image from '../assets/p2-content-repurposing.png'
+import p3Image from '../assets/p3-social-media-ai.png'
+import p4Image from '../assets/p4-facebook-messenger.png'
+import p5Image from '../assets/p5-xero-asana.png'
+import p6Image from '../assets/p6-gmail-attachments.png'
+import porffImage from '../assets/PORFF.png'
+
+// Static image map - always available, never missing
+const staticProjectImages = {
+  p1: p1Image,
+  p2: p2Image,
+  p3: p3Image,
+  p4: p4Image,
+  p5: p5Image,
+  p6: p6Image,
+}
+
+// Simple inline SVG fallback (only used if no static image exists)
+const fallbackImage = `data:image/svg+xml;utf8,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600"><rect width="100%" height="100%" fill="#0b0b0d"/><text x="50%" y="50%" fill="#66efff" font-size="36" font-family="Arial" text-anchor="middle" dominant-baseline="middle">No Image</text></svg>'
+)}`
+
 export default function PortfolioGuide() {
   const scrollTo = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
@@ -84,7 +108,6 @@ export default function PortfolioGuide() {
         'Generates personalized outreach email drafts with LLM'
       ],
       tech: ['Zapier', 'External APIs', 'SQL', 'LLM', 'Slack Integration'],
-      imageKey: 'p1-image'
     },
     {
       id: 'p2',
@@ -101,7 +124,6 @@ export default function PortfolioGuide() {
         'Conditional publishing based on content type'
       ],
       tech: ['Zapier', 'Make', 'Transcription APIs', 'Google Sheets', 'AI Writing'],
-      imageKey: 'p2-image'
     },
     {
       id: 'p3',
@@ -119,7 +141,6 @@ export default function PortfolioGuide() {
         'Logs all activity in Google Sheets'
       ],
       tech: ['n8n', 'Google Gemini', 'Google Sheets', 'Facebook Graph API', 'Weather APIs'],
-      imageKey: 'p3-image'
     },
     {
       id: 'p4',
@@ -137,7 +158,6 @@ export default function PortfolioGuide() {
         'Escalates complex queries to human support'
       ],
       tech: ['n8n', 'Google Gemini', 'Google Docs', 'Facebook Messenger API', 'Custom AI Agent'],
-      imageKey: 'p4-image'
     },
     {
       id: 'p5',
@@ -154,7 +174,6 @@ export default function PortfolioGuide() {
         'Tracks all export history'
       ],
       tech: ['Make.com', 'Xero API', 'Asana API', 'CSV Processing', 'Automation'],
-      imageKey: 'p5-image'
     },
     {
       id: 'p6',
@@ -171,37 +190,111 @@ export default function PortfolioGuide() {
         'Auto-tags files based on content analysis'
       ],
       tech: ['Make.com', 'Gemini AI', 'Gmail API', 'Google Drive API', 'Google Sheets'],
-      imageKey: 'p6-image'
     }
   ]
 
   const [selectedProject, setSelectedProject] = useState(null)
   const [projectImages, setProjectImages] = useState({})
+  const [sidebarImage, setSidebarImage] = useState(porffImage)
 
-  // Load project images from localStorage on mount
+  // Initialize images from static imports (no localStorage / uploads)
   useEffect(() => {
-    const savedImages = {}
-    featuredProjects.forEach(proj => {
-      const saved = localStorage.getItem(`project-${proj.imageKey}`)
-      if (saved) savedImages[proj.id] = saved
+    const initial = {}
+    featuredProjects.forEach((proj) => {
+      initial[proj.id] = staticProjectImages[proj.id] || fallbackImage
     })
-    setProjectImages(savedImages)
+    setProjectImages(initial)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // inject small styles scoped to hero two-column layout and sidebar box
+  useEffect(() => {
+    if (document.getElementById('pg-sidebar-styles')) return
+    const style = document.createElement('style')
+    style.id = 'pg-sidebar-styles'
+    style.innerHTML = `
+		/* Hero: two-column Description | Profile */
+		#hero-section .hero-inner { display:flex; gap:1rem; align-items:flex-start; }
+		#hero-section .hero-left { flex:1 1 auto; }
+		#hero-section .hero-right { width:220px; flex:0 0 220px; }
+		/* Sidebar/Box styling */
+		.pg-sidebar-box { background:linear-gradient(180deg,#071021,#0b1220); border-radius:10px; padding:12px; border:1px solid rgba(255,255,255,0.04); box-shadow:0 6px 18px rgba(2,6,23,0.6); color:#fff; }
+		.pg-sidebar-title { font-weight:700; font-size:0.95rem; margin-bottom:8px; color:#9ad9ff; }
+		.pg-sidebar-image { width:100%; height:160px; object-fit:cover; border-radius:8px; display:block; background:#0f172a; }
+		.pg-sidebar-input { margin-top:10px; display:flex; gap:8px; align-items:center; }
+		.pg-sidebar-file { display:block; }
+		.pg-sidebar-hint { font-size:0.78rem; opacity:0.8; margin-top:8px; color:#9fbdd8; }
+		@media (max-width:900px) { #hero-section .hero-right { display:none; } }
+	  `
+    document.head.appendChild(style)
   }, [])
 
-  const handleProjectImageUpload = (e, projectId) => {
-    const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const imageData = event.target.result
-        setProjectImages(prev => ({ ...prev, [projectId]: imageData }))
-        // Find the project to get its imageKey
-        const proj = featuredProjects.find(p => p.id === projectId)
-        if (proj) {
-          localStorage.setItem(`project-${proj.imageKey}`, imageData)
-        }
+  // inject updated hero styles (description left, hexagon image right)
+  useEffect(() => {
+    if (document.getElementById('pg-hero-styles')) return
+    const style = document.createElement('style')
+    style.id = 'pg-hero-styles'
+    style.innerHTML = `
+      /* Hero two-column: left description, right hexagon image */
+      #hero-section { padding: 28px; background: linear-gradient(180deg,#0b1014,#071018); color: #e6f6f8; border-radius: 12px; }
+      #hero-section .hero-inner { display:flex; gap:2rem; align-items:center; justify-content:space-between; }
+      #hero-section .hero-left { flex:1 1 60%; }
+      #hero-section .greeting { color:#9fbdd8; font-size:0.95rem; margin-bottom:8px; }
+      #hero-section .hero-name { font-size:2.2rem; margin:0; color:#00d4a6; font-weight:800; line-height:1; }
+      #hero-section .hero-role { color:#bfeee0; margin:6px 0 0; font-weight:600; }
+      #hero-section .hero-location { color:#9fbdd8; margin-top:6px; }
+      #hero-section .hero-tagline { color:#cfeff0; margin:14px 0 18px; max-width:620px; font-size:1rem; line-height:1.4; }
+      #hero-section .hero-ctas { display:flex; gap:10px; align-items:center; }
+      #hero-section .btn-primary { background:#00d389; color:#052018; border-radius:10px; padding:10px 16px; box-shadow:0 8px 20px rgba(0,211,137,0.12); text-decoration:none; }
+      #hero-section .btn-ghost { background:transparent; color:#aeeaf0; border:1px solid rgba(174,234,240,0.14); padding:9px 14px; border-radius:10px; }
+
+      /* Hexagon container */
+      #hero-section .hero-right { width:260px; flex: 0 0 260px; display:flex; align-items:center; justify-content:center; }
+      .hexagon {
+        width: 240px;
+        height: 276px;
+        display:block;
+        clip-path: polygon(25% 6.7%,75% 6.7%,100% 50%,75% 93.3%,25% 93.3%,0% 50%);
+        background: radial-gradient(circle at 35% 25%, rgba(0,212,137,0.12), transparent 30%), linear-gradient(135deg,#06b6d4,#00d4a6);
+        box-shadow: 0 14px 40px rgba(2,6,23,0.5);
+        border-radius:8px;
+        position:relative;
+        overflow:hidden;
+        display:flex;
+        align-items:center;
+        justify-content:center;
       }
-      reader.readAsDataURL(file)
+      .hexagon img { width: 220px; height:220px; object-fit:cover; border-radius:8px; transform: translateY(-8px); }
+
+      @media (max-width:900px) {
+        #hero-section .hero-inner { flex-direction:column; gap:12px; }
+        #hero-section .hero-right { width:100%; display:flex; justify-content:center; }
+        .hexagon { width: 200px; height:230px; }
+      }
+    `
+    document.head.appendChild(style)
+  }, [])
+
+  // handler to preview selected image in sidebar (no persistence)
+  const handleSidebarImageChange = (e) => {
+    const file = e.target.files && e.target.files[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setSidebarImage(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  // new: open hidden file input (hexagon click) for profile preview
+  const openSidebarFileDialog = () => {
+    const input = document.getElementById('pg-sidebar-file')
+    input?.click()
+  }
+
+  // new: keyboard handler for project cards to open modal on Enter / Space
+  const handleProjectKeyDown = (e, proj) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      setSelectedProject(proj)
     }
   }
 
@@ -224,6 +317,181 @@ export default function PortfolioGuide() {
     }
   }, [selectedProject])
 
+  // Ensure any previously injected enhanced project styles are removed so we revert to the original simple design
+  useEffect(() => {
+    const injected = document.getElementById('pg-project-styles')
+    if (injected && injected.parentNode) injected.parentNode.removeChild(injected)
+  }, [])
+
+  // Inject small style to improve contact link wrapping & visibility
+  useEffect(() => {
+    if (document.getElementById('pg-contact-link-styles')) return
+    const s = document.createElement('style')
+    s.id = 'pg-contact-link-styles'
+    s.innerHTML = `
+			/* Prevent awkward mid-word breaks for contact links */
+			.pg-contact-link {
+				display: inline-block;
+				white-space: normal;
+				overflow-wrap: anywhere;
+				word-break: normal;
+				max-width: 100%;
+				color: inherit;
+			}
+			/* Ensure link visuals remain consistent */
+			.pg-contact-link:hover { text-decoration: underline; }
+		`
+    document.head.appendChild(s)
+  }, [])
+
+  // Insert unified UI styles (colors, hover, focus, transitions)
+  useEffect(() => {
+    if (document.getElementById('pg-unified-styles')) return
+    const style = document.createElement('style')
+    style.id = 'pg-unified-styles'
+    style.innerHTML = `
+    :root{
+      --pg-accent: #00d389;
+      --pg-accent-2: #06b6d4;
+      --pg-muted: #9fbdd8;
+      --pg-bg-card: #071018;
+      --pg-text: #e6f6f8;
+      --pg-radius: 12px;
+      --pg-glass: rgba(255,255,255,0.04);
+      --pg-shadow: 0 12px 30px rgba(2,6,23,0.45);
+      --pg-soft-shadow: 0 6px 18px rgba(2,6,23,0.28);
+      --pg-transition: 180ms cubic-bezier(.2,.9,.3,1);
+    }
+
+    /* Buttons */
+    .btn, .btn-primary, .btn-ghost {
+      transition: transform var(--pg-transition), box-shadow var(--pg-transition), background-color var(--pg-transition), color var(--pg-transition);
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary {
+      background: linear-gradient(90deg,var(--pg-accent), var(--pg-accent-2));
+      color: #052018;
+      box-shadow: 0 10px 26px rgba(0,211,137,0.08);
+      border: none;
+    }
+    .btn-primary:hover, .btn-primary:focus {
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 18px 42px rgba(0,211,137,0.14);
+      outline: none;
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--pg-glass);
+      color: var(--pg-text);
+    }
+    .btn-ghost:hover, .btn-ghost:focus {
+      transform: translateY(-3px);
+      box-shadow: var(--pg-soft-shadow);
+      outline: none;
+    }
+
+    /* Project cards */
+    .pg-project-item {
+      transition: transform var(--pg-transition), box-shadow var(--pg-transition), border-color var(--pg-transition);
+      border-radius: 10px;
+      border: 1px solid rgba(15,23,42,0.04);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      box-shadow: 0 6px 18px rgba(2,6,23,0.04);
+    }
+    .pg-project-item:hover, .pg-project-item:focus {
+      transform: translateY(-8px);
+      box-shadow: var(--pg-shadow);
+      border-color: rgba(0,211,137,0.08);
+      outline: none;
+    }
+
+    /* Tech badges */
+    .pg-tech-badge {
+      transition: background-color var(--pg-transition), color var(--pg-transition), transform var(--pg-transition);
+      background: linear-gradient(90deg, rgba(238,242,255,0.7), rgba(232,240,255,0.6));
+      color: #2e2e8b;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      display:inline-flex;
+      align-items:center;
+    }
+    .pg-tech-badge:hover, .pg-tech-badge:focus {
+      background: linear-gradient(90deg,var(--pg-accent-2),var(--pg-accent));
+      color: white;
+      transform: translateY(-3px) scale(1.02);
+      outline: none;
+    }
+
+    /* Hexagon profile hover */
+    .hexagon {
+      transition: transform var(--pg-transition), box-shadow var(--pg-transition), filter var(--pg-transition);
+      will-change: transform;
+    }
+    .hexagon:hover, .hexagon:focus {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 22px 48px rgba(2,6,23,0.5);
+      filter: saturate(1.06);
+      outline: none;
+    }
+
+    /* Modal improvements */
+    .pg-modal-content {
+      transition: transform var(--pg-transition), box-shadow var(--pg-transition);
+      border-radius: var(--pg-radius);
+      box-shadow: 0 24px 60px rgba(2,6,23,0.6);
+    }
+    .pg-modal-close {
+      transition: transform var(--pg-transition), color var(--pg-transition);
+    }
+    .pg-modal-close:hover, .pg-modal-close:focus {
+      transform: rotate(90deg) scale(1.05);
+      color: var(--pg-accent);
+      outline: none;
+    }
+
+    /* Links */
+    a[rel~="noopener"], .pg-contact-link {
+      transition: color var(--pg-transition), text-decoration var(--pg-transition);
+    }
+    a[rel~="noopener"]:hover, .pg-contact-link:hover {
+      color: var(--pg-accent-2);
+      text-decoration: underline;
+    }
+
+    /* Focus styles for accessibility */
+    .pg-project-item:focus, .hexagon:focus, .btn:focus, .pg-tech-badge:focus, .pg-contact-link:focus {
+      box-shadow: 0 0 0 4px rgba(0,211,137,0.09);
+    }
+
+    /* Small screens tweak */
+    @media (max-width:640px) {
+      .pg-project-item:hover { transform: none; box-shadow: 0 8px 20px rgba(2,6,23,0.08); }
+      .hexagon:hover { transform: none; box-shadow: 0 8px 20px rgba(2,6,23,0.08); }
+    }
+  `
+    document.head.appendChild(style)
+  }, [])
+
+  // new: explicit open handlers for contact links (mailto / external)
+  const openEmail = (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    window.location.href = 'mailto:ralphgeneroso0815@gmail.com'
+  }
+
+  const openLinkedIn = (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    window.open('https://www.linkedin.com/in/ralph-g-522613392', '_blank', 'noopener')
+  }
+
+  const openUpwork = (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    window.open('https://www.upwork.com/freelancers/~01216084bdbcb9cf83', '_blank', 'noopener')
+  }
+
   return (
     <main id="portfolio-guide" className="pg-root">
       <div className="pg-layout">
@@ -231,18 +499,34 @@ export default function PortfolioGuide() {
 
           {/* 1. Hero Section */}
           <section id="hero-section" className="pg-card hero">
-            <div className="pg-icon">🏷️</div>
-            <div className="hero-content">
-              <div className="hero-meta">
-                <h2 className="hero-name">RALPH T. GENEROSO</h2>
-                <p className="hero-role">Workflow Automation Specialist</p>
-                <p className="hero-location">Bulacan, Philippines</p>
-              </div>
-              <p className="hero-tagline">“I build scalable, no-code & low-code automations that save hundreds of hours using Zapier, Make, GoHighLevel & custom scripts.”</p>
+            <div className="hero-inner">
+              <div className="hero-left">
+                <div className="greeting">Hello, I'm</div>
+                <h1 className="hero-name">RALPH</h1>
+                <div className="hero-role">Workflow Automation Specialist</div>
+                <div className="hero-location">Bulacan, Philippines</div>
 
-              <div className="hero-ctas">
-                <button className="btn btn-ghost" onClick={() => scrollTo('work-section')}>View Projects ↓</button>
-                <a className="btn btn-primary" href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83" target="_blank" rel="noreferrer">Hire Me on Upwork</a>
+                <p className="hero-tagline">
+                  “I build scalable, no-code & low-code automations that save hundreds of hours using Zapier, Make, GoHighLevel & custom scripts.”
+                </p>
+
+                <div className="hero-ctas">
+                  <button className="btn btn-ghost" onClick={() => scrollTo('work-section')}>View Projects ↓</button>
+                  <a className="btn btn-primary" href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83" target="_blank" rel="noopener noreferrer" aria-label="Let's Talk on Upwork">Let's Talk</a>
+                </div>
+              </div>
+
+              <div className="hero-right" aria-label="Profile image">
+                <div
+                  className="hexagon"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Change profile image"
+                  onClick={openSidebarFileDialog}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSidebarFileDialog() } }}
+                >
+                  <img src={sidebarImage} alt="Profile" />
+                </div>
               </div>
             </div>
           </section>
@@ -290,7 +574,7 @@ export default function PortfolioGuide() {
 
               <div className="pg-about-cta">
                 <p>Let's build something amazing together!</p>
-                <a href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83" target="_blank" rel="noreferrer" className="pg-about-btn">
+                <a href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83" target="_blank" rel="noopener noreferrer" className="pg-about-btn" aria-label="Start a project on Upwork">
                   Start a Project
                 </a>
               </div>
@@ -356,13 +640,21 @@ export default function PortfolioGuide() {
             <div className="pg-featured-projects">
               <h4 className="pg-subsection-title">Self-Paced Learning Automation Projects</h4>
               {featuredProjects.map((proj) => (
-                <div key={proj.id} className="pg-project-item" tabIndex={0} onClick={() => setSelectedProject(proj)}>
+                <div
+                  key={proj.id}
+                  className="pg-project-item"
+                  tabIndex={0}
+                  onClick={() => setSelectedProject(proj)}
+                  onKeyDown={(e) => handleProjectKeyDown(e, proj)}
+                  role="button"
+                  aria-label={`Open details for ${proj.title}`}
+                >
                   <div className="pg-project-header">
                     <div className="pg-project-icon">{proj.icon}</div>
                     <h5 className="pg-project-title">{proj.title}</h5>
                     <span className="pg-view-details-badge">View Details →</span>
                   </div>
-                  <p className="pg-project-desc">{proj.description}</p>
+                  <p className="pg-project_desc">{proj.description}</p>
                   <ul className="pg-highlights">
                     {proj.highlights.slice(0, 3).map((h, i) => (
                       <li key={i}>{h}</li>
@@ -458,8 +750,8 @@ export default function PortfolioGuide() {
                 <div className="pg-contact-icon">📱</div>
                 <div className="pg-contact-content">
                   <h4 className="pg-contact-label">Phone</h4>
-                  <a href="tel:+63926546465" className="pg-contact-link">+63 926 546 4465</a>
-                  <a href="tel:+639086589636" className="pg-contact-link">+63 908 658 9636</a>
+                  <a href="tel:+63926546465" className="pg-contact-link" aria-label="Call primary number">+63 926 546 4465</a>
+                  <a href="tel:+639086589636" className="pg-contact-link" aria-label="Call secondary number">+63 908 658 9636</a>
                 </div>
               </div>
 
@@ -468,7 +760,15 @@ export default function PortfolioGuide() {
                 <div className="pg-contact-icon">💌</div>
                 <div className="pg-contact-content">
                   <h4 className="pg-contact-label">Email</h4>
-                  <a href="mailto:ralphgeneroso0815@gmail.com" className="pg-contact-link">ralphgeneroso0815@gmail.com</a>
+                  <a
+                    href="mailto:ralphgeneroso0815@gmail.com"
+                    className="pg-contact-link"
+                    aria-label="Send email to ralphgeneroso0815 at gmail"
+                    onClick={openEmail}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEmail() } }}
+                  >
+                    ralphgeneroso0815@gmail.com
+                  </a>
                 </div>
               </div>
 
@@ -477,7 +777,17 @@ export default function PortfolioGuide() {
                 <div className="pg-contact-icon">💼</div>
                 <div className="pg-contact-content">
                   <h4 className="pg-contact-label">LinkedIn</h4>
-                  <a href="https://linkedin.com/in/ralph-g-522613392" target="_blank" rel="noreferrer" className="pg-contact-link">linkedin.com/in/ralph-g-522613392</a>
+                  <a
+                    href="https://www.linkedin.com/in/ralph-g-522613392"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pg-contact-link"
+                    aria-label="Open LinkedIn profile in a new tab"
+                    onClick={openLinkedIn}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLinkedIn() } }}
+                  >
+                    www.linkedin.com/in/ralph-g-522613392
+                  </a>
                 </div>
               </div>
 
@@ -486,7 +796,17 @@ export default function PortfolioGuide() {
                 <div className="pg-contact-icon">🎯</div>
                 <div className="pg-contact-content">
                   <h4 className="pg-contact-label">Upwork</h4>
-                  <a href="https://upwork.com/freelancers/~01216084bdbcb9cf83" target="_blank" rel="noreferrer" className="pg-contact-link">upwork.com/ralph</a>
+                  <a
+                    href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pg-contact-link"
+                    aria-label="Open Upwork profile in a new tab"
+                    onClick={openUpwork}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openUpwork() } }}
+                  >
+                    https://www.upwork.com/freelancers/~01216084bdbcb9cf83
+                  </a>
                 </div>
               </div>
 
@@ -512,7 +832,13 @@ export default function PortfolioGuide() {
 
             <div className="pg-contact-cta">
               <p className="pg-contact-cta-text">Ready to start your automation project?</p>
-              <a href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83" target="_blank" rel="noreferrer" className="pg-contact-btn">
+              <a
+                href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="pg-contact-btn"
+                aria-label="Hire me on Upwork"
+              >
                 Hire Me on Upwork
               </a>
             </div>
@@ -528,8 +854,8 @@ export default function PortfolioGuide() {
       {selectedProject && (
         <div className="pg-modal-overlay" onClick={closeModal}>
           <div className="pg-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button 
-              className="pg-modal-close" 
+            <button
+              className="pg-modal-close"
               onClick={closeModal}
               aria-label="Close modal"
               title="Close (Esc)"
@@ -537,28 +863,15 @@ export default function PortfolioGuide() {
               ✕
             </button>
 
+            {/* simplified modal image section - static only (removed upload UI & file input) */}
             <div className="pg-modal-image-section">
-              {projectImages[selectedProject.id] ? (
-                <div className="pg-modal-image-wrapper">
-                  <img src={projectImages[selectedProject.id]} alt={selectedProject.title} className="pg-modal-image" />
-                  <label htmlFor={`project-image-${selectedProject.id}`} className="pg-upload-overlay">
-                    📸 Change Image
-                  </label>
-                </div>
-              ) : (
-                <div className="pg-modal-image-placeholder">
-                  <label htmlFor={`project-image-${selectedProject.id}`} className="pg-upload-label">
-                    📸 Click to upload workflow image
-                  </label>
-                </div>
-              )}
-              <input
-                type="file"
-                id={`project-image-${selectedProject.id}`}
-                accept="image/*"
-                onChange={(e) => handleProjectImageUpload(e, selectedProject.id)}
-                style={{ display: 'none' }}
-              />
+              <div className="pg-modal-image-wrapper">
+                <img
+                  src={projectImages[selectedProject.id]}
+                  alt={selectedProject.title}
+                  className="pg-modal-image"
+                />
+              </div>
             </div>
 
             <div className="pg-modal-body">
@@ -594,7 +907,7 @@ export default function PortfolioGuide() {
               </div>
 
               <div className="pg-modal-cta">
-                <a href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83" target="_blank" rel="noreferrer" className="pg-modal-btn">
+                <a href="https://www.upwork.com/freelancers/~01216084bdbcb9cf83" target="_blank" rel="noopener noreferrer" className="pg-modal-btn" aria-label="Hire me on Upwork">
                   Interested? Hire Me on Upwork
                 </a>
               </div>
